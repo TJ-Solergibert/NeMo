@@ -7,6 +7,19 @@
 [![PyPi total downloads](https://static.pepy.tech/personalized-badge/nemo-toolkit?period=total&units=international_system&left_color=grey&right_color=brightgreen&left_text=downloads)](https://pepy.tech/project/nemo-toolkit)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
+# **NVIDIA NeMo Framework ft. Alps🏔️**
+In this repository you'll find the instructions to build the NeMo container image on Alps. Currently we are just supporting the `nlp` extension. In the future NVIDIA will be providing a NeMo NGC image for ARM processors. 
+
+The most recent image is stored in `/store/swissai/a06/.NeMo/container` alongside a `.toml` file to load the environment.
+
+To manually build the image run:
+1. `srun --time 11:59:59 --reservation todi -p normal --pty bash`
+2. `podman build -f /users/asolergi/NeMo/DockerfileTodi -t nemo /users/asolergi/NeMo/`
+3. `enroot import -o /store/swissai/a06/.NeMo/container/nemo.sqsh podman://localhost/nemo:latest`
+
+Below is NeMo's original README.
+------
+
 # **NVIDIA NeMo Framework**
 
 ## Latest News

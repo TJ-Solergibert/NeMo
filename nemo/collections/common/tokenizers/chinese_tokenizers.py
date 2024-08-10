@@ -35,7 +35,7 @@ import re
 from typing import List
 
 import jieba
-import opencc
+# import opencc # NOTE(tj.solergibert) "OSError: libopencc.so.1: cannot open shared object file: No such file or directory". ONLY for chinese 
 from pangu import spacing
 
 

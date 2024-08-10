@@ -1,6 +1,6 @@
 addict
 clip
-decord
+# decord # NOTE(tj.solergibert) Not available for ARM processors
 diffusers>=0.19.3
 einops_exts
 imageio
