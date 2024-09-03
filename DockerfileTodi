@@ -33,7 +33,14 @@ RUN apt-get update && \
   apt-get install -y bc libsox-fmt-all -y && \
   apt-get clean
 
+# Install triton # NOTE(tj.solergibert) Newest NGC come with triton
 WORKDIR /opt
+RUN git clone https://github.com/triton-lang/triton.git
+WORKDIR /opt/triton
+RUN pip install ninja cmake wheel pybind11
+RUN pip install -e python
+WORKDIR /opt
+
 # Copy over NeMo code
 COPY ./ NeMo/
 
@@ -62,7 +69,7 @@ git checkout ${MCORE_TAG} && \
   make && \
   popd && \
 popd && \
-export PYTHONPATH="${PYTHONPATH}:/workspace/Megatron-LM"
+export PYTHONPATH="${PYTHONPATH}:/opt/Megatron-LM"
 
 # TODO(tj.solergibert) Dropping support for mamba model. triton seems to be a problem, look for version with ARM wheels OR build from source
 # Mamba dependancy installation
@@ -95,5 +102,6 @@ ENV PYTHONPATH="${PYTHONPATH}:/opt/Megatron-LM"
 
 
 # Instructions:
+# 0. srun --time 11:59:59 -p normal --pty bash
 # 1. Build image: podman build -f /users/asolergi/NeMo/DockerfileTodi -t nemo /users/asolergi/NeMo/
 # 2. Export image: enroot import -o /store/swissai/a06/.NeMo/container/nemo.sqsh podman://localhost/nemo:latest
