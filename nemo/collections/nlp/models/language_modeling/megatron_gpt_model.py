@@ -1578,6 +1578,9 @@ class MegatronGPTModel(MegatronBaseModel, TextGeneration):
                 "drop_last_partial_validation_sequence": self.cfg.data.get("validation_drop_last", True),
                 "num_dataset_builder_threads": self.cfg.data.get("num_dataset_builder_threads", 1),
                 "add_extra_token_to_sequence": add_extra_token,
+                "goldfish_loss": self.cfg.data.get("goldfish_loss", False),
+                "goldfish_k": self.cfg.data.get("goldfish_k", 4),
+                "goldfish_h": self.cfg.data.get("goldfish_h", 13),
             }
 
             data_prefix = self.cfg.data.data_prefix

@@ -14,7 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ARG BASE_IMAGE=nvcr.io/nvidia/pytorch:24.02-py3
+ARG BASE_IMAGE=nvcr.io/nvidia/pytorch:24.05-py3
+# NOTE(tj.solergibert) NeMo uses pytorch:24.02-py3 BUT 24.02 doesn't ship triton 
 
 FROM ${BASE_IMAGE}
 
@@ -24,8 +25,8 @@ ENV PYTHONUNBUFFERED=1
 
 # Install NeMo requirements
 ARG TE_TAG=7d576ed25266a17a7b651f2c12e8498f67e0baea
-ARG MODELOPT_VERSION=0.13.0
-ARG MCORE_TAG=2fd6e2b74efca73a1f2d27b89bb5419384b4d3bf
+ARG MODELOPT_VERSION=0.15.0
+ARG MCORE_TAG=52e63743152cb01a9d45990b5a63bf36c004a260
 ARG APEX_TAG=810ffae374a2b9cb4b5c5e28eaeca7d7998fca0c
 
 # APT packages
@@ -33,12 +34,6 @@ RUN apt-get update && \
   apt-get install -y bc libsox-fmt-all -y && \
   apt-get clean
 
-# Install triton # NOTE(tj.solergibert) Newest NGC come with triton
-WORKDIR /opt
-RUN git clone https://github.com/triton-lang/triton.git
-WORKDIR /opt/triton
-RUN pip install ninja cmake wheel pybind11
-RUN pip install -e python
 WORKDIR /opt
 
 # Copy over NeMo code
@@ -50,7 +45,7 @@ RUN pip install py-cpuinfo
 RUN pip install pkgconfig
 RUN pip install --no-cache-dir --no-build-isolation --extra-index-url https://pypi.nvidia.com \
 "transformer-engine @ git+https://github.com/NVIDIA/TransformerEngine.git@${TE_TAG}" \
-"megatron_core @ git+https://github.com/NVIDIA/Megatron-LM.git@${MCORE_TAG}" \
+"megatron_core @ git+https://github.com/TJ-Solergibert/Megatron-debug.git@${MCORE_TAG}" \
 "nvidia-modelopt[torch]~=${MODELOPT_VERSION}" \
 "apex @ git+https://github.com/NVIDIA/apex.git@${APEX_TAG}" \
 "unstructured==0.14.9" \
@@ -62,7 +57,7 @@ RUN pip install --no-cache-dir --no-build-isolation --extra-index-url https://py
 WORKDIR /opt
 
 # Megatron Core installation
-RUN git clone https://github.com/NVIDIA/Megatron-LM.git && \
+RUN git clone https://github.com/TJ-Solergibert/Megatron-debug.git && \
 pushd Megatron-LM && \
 git checkout ${MCORE_TAG} && \
   pushd megatron/core/datasets && \
