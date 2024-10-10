@@ -19,7 +19,7 @@ from collections import OrderedDict
 import torch
 from omegaconf import open_dict
 from pytorch_lightning import Trainer
-from transformers import AutoModelForCausalLM, LlamaTokenizer, LlamaTokenizerFast, convert_slow_tokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from nemo.collections.nlp.models.language_modeling.megatron_gpt_model import MegatronGPTModel
 from nemo.collections.nlp.parts.nlp_overrides import NLPDDPStrategy
@@ -232,18 +232,19 @@ def replace_hf_weights_and_tokenizer(
     nemo_exported = torch.load(weights_file)
 
     if tokenizer_path:
-        tokenizer = LlamaTokenizer.from_pretrained(tokenizer_path, local_files_only=True, legacy=False,)
-        tmp_tokenizer = convert_slow_tokenizer.convert_slow_tokenizer(tokenizer)
-        fast_tokenizer = LlamaTokenizerFast(tokenizer_object=tmp_tokenizer)
-        tokenizer_length = len(fast_tokenizer)
-        model.resize_token_embeddings(tokenizer_length)
+        tokenizer = AutoTokenizer.from_pretrained(tokenizer_path, local_files_only=True, legacy=False,)
+        # tokenizer = LlamaTokenizer.from_pretrained(tokenizer_path, local_files_only=True, legacy=False,) # NOTE(tj.solergibert) This doesn't works with new `tokenizers`
+        # tmp_tokenizer = convert_slow_tokenizer.convert_slow_tokenizer(tokenizer)
+        # fast_tokenizer = LlamaTokenizerFast(tokenizer_object=tmp_tokenizer)
+        # tokenizer_length = len(fast_tokenizer)
+        # model.resize_token_embeddings(tokenizer_length)
 
     model.load_state_dict(nemo_exported)
     model.save_pretrained(output_hf_path)
     logging.info(f"Full HF model saved to {output_hf_path}")
 
     if tokenizer_path:
-        fast_tokenizer.save_pretrained(output_hf_tokenizer)
+        # fast_tokenizer.save_pretrained(output_hf_tokenizer)
         tokenizer.save_pretrained(output_hf_tokenizer)
         logging.info(f"Tokenizer saved to {output_hf_tokenizer}")
 
