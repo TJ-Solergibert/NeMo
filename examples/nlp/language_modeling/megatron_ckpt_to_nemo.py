@@ -100,7 +100,7 @@ def get_args():
         default="gpt",
         choices=["gpt", "sft", "t5", "bert", "nmt", "bart", "retro"],
     )
-    parser.add_argument("--local_rank", type=int, required=False, default=os.getenv('LOCAL_RANK', -1))
+    parser.add_argument("--local-rank", type=int, required=False, default=os.getenv('LOCAL_RANK', -1))
     parser.add_argument("--bcp", action="store_true", help="Whether on BCP platform")
     parser.add_argument(
         "--precision",
@@ -182,7 +182,7 @@ def convert(local_rank, rank, world_size, args):
 
     # check for distributed checkpoint
     dist_ckpt_dir = os.path.join(args.checkpoint_folder, args.checkpoint_name)
-    if os.path.isdir(dist_ckpt_dir):
+    if True: # NOTE(tj.solergibert) This evaluates to false on todi os.path.isdir(dist_ckpt_dir):
         checkpoint_path = dist_ckpt_dir
     else:
         # legacy checkpoint needs model parallel injection
