@@ -16,6 +16,7 @@
 
 ARG BASE_IMAGE=nvcr.io/nvidia/pytorch:24.05-py3
 # NOTE(tj.solergibert) NeMo uses pytorch:24.02-py3 BUT 24.02 doesn't ship triton 
+# NOTE(tj.solergibert) pytorch:24.07-py3 contains a regression that triggers segmentations faults at scale
 
 FROM ${BASE_IMAGE}
 
@@ -26,12 +27,12 @@ ENV PYTHONUNBUFFERED=1
 # Install NeMo requirements
 ARG TE_TAG=7d576ed25266a17a7b651f2c12e8498f67e0baea
 ARG MODELOPT_VERSION=0.15.0
-ARG MCORE_TAG=52e63743152cb01a9d45990b5a63bf36c004a260
+ARG MCORE_TAG=c7c7bc5870b2b3d1d4f50f5a07f64f0947291982
 ARG APEX_TAG=810ffae374a2b9cb4b5c5e28eaeca7d7998fca0c
 
 # APT packages
 RUN apt-get update && \
-  apt-get install -y bc libsox-fmt-all -y && \
+  apt-get install -y bc gdb libsox-fmt-all -y && \
   apt-get clean
 
 WORKDIR /opt
@@ -45,7 +46,7 @@ RUN pip install py-cpuinfo
 RUN pip install pkgconfig
 RUN pip install --no-cache-dir --no-build-isolation --extra-index-url https://pypi.nvidia.com \
 "transformer-engine @ git+https://github.com/NVIDIA/TransformerEngine.git@${TE_TAG}" \
-"megatron_core @ git+https://github.com/TJ-Solergibert/Megatron-debug.git@${MCORE_TAG}" \
+"megatron_core @ git+https://github.com/TJ-Solergibert/Megatron-LM.git@${MCORE_TAG}" \
 "nvidia-modelopt[torch]~=${MODELOPT_VERSION}" \
 "apex @ git+https://github.com/NVIDIA/apex.git@${APEX_TAG}" \
 "unstructured==0.14.9" \
@@ -57,7 +58,7 @@ RUN pip install --no-cache-dir --no-build-isolation --extra-index-url https://py
 WORKDIR /opt
 
 # Megatron Core installation
-RUN git clone https://github.com/TJ-Solergibert/Megatron-debug.git && \
+RUN git clone https://github.com/TJ-Solergibert/Megatron-LM.git && \
 pushd Megatron-LM && \
 git checkout ${MCORE_TAG} && \
   pushd megatron/core/datasets && \
@@ -97,6 +98,6 @@ ENV PYTHONPATH="${PYTHONPATH}:/opt/Megatron-LM"
 
 
 # Instructions:
-# 0. srun --time 11:59:59 -p normal --pty bash
+# 0. srun --time 02:29:59 --reservation sai-a06 -A a06 --mem 460000 --pty bash
 # 1. Build image: podman build -f /users/asolergi/NeMo/DockerfileTodi -t nemo /users/asolergi/NeMo/
-# 2. Export image: enroot import -o /store/swissai/a06/.NeMo/container/nemo.sqsh podman://localhost/nemo:latest
+# 2. Export image: enroot import -o /store/swissai/a06/.NeMo/container/nemo_gdb_oct_fix.sqsh podman://localhost/nemo:latest
