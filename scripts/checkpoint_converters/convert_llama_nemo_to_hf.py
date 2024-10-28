@@ -93,16 +93,22 @@ def get_args():
         help="Load model in cpu only. Useful if the model cannot fit in GPU memory, "
         "but this option makes the conversion script significantly slower.",
     )
+    parser.add_argument(
+        "--override_config_path",
+        type=str,
+        default=None,
+        help="Path to the model config file without TP & SP",
+    )
     args = parser.parse_args()
     return args
 
 
-def convert(input_nemo_file, output_hf_file, precision=None, cpu_only=False) -> None:
+def convert(input_nemo_file, output_hf_file, override_config_path, precision=None, cpu_only=False) -> None:
     """
     Convert NeMo weights to HF weights
     """
     dummy_trainer = Trainer(devices=1, accelerator='cpu', strategy=NLPDDPStrategy())
-    model_config = MegatronGPTModel.restore_from(input_nemo_file, trainer=dummy_trainer, return_config=True)
+    model_config = MegatronGPTModel.restore_from(input_nemo_file, trainer=dummy_trainer, return_config=True, override_config_path=override_config_path) # NOTE(tj.solergibert) We need to manually override the config file to turn of sequence parallelism, otherwise it will complain that you can't use SP without TP
     model_config.tensor_model_parallel_size = 1
     model_config.pipeline_model_parallel_size = 1
     if cpu_only:
@@ -143,14 +149,14 @@ def convert(input_nemo_file, output_hf_file, precision=None, cpu_only=False) -> 
     qkv_total_dim = head_num + 2 * num_query_groups
 
     # Embedding
-    embed_weight = model.state_dict()[f'model.embedding.word_embeddings.weight']
+    embed_weight = model.model[0].state_dict()[f'embedding.word_embeddings.weight']
     embed_weights_base_name = f'model.embed_tokens.weight'
     checkpoint[embed_weights_base_name] = param_to_weights(embed_weight)
 
     for l in range(int(num_layers)):
         print(f"converting layer {l}")
 
-        qkv_weights = model.state_dict()[f'model.decoder.layers.{l}.self_attention.linear_qkv.weight']
+        qkv_weights = model.model[0].state_dict()[f'decoder.layers.{l}.self_attention.linear_qkv.weight']
         qkv_weights = qkv_weights.reshape([qkv_total_dim, head_size, hidden_size])
 
         q_slice = torch.cat(
@@ -180,12 +186,12 @@ def convert(input_nemo_file, output_hf_file, precision=None, cpu_only=False) -> 
         checkpoint[v_weights_base_name] = param_to_weights(qkv_weights[v_slice].reshape(-1, hidden_size))
 
         # attention dense
-        o_weight = model.state_dict()[f'model.decoder.layers.{l}.self_attention.linear_proj.weight']
+        o_weight = model.model[0].state_dict()[f'decoder.layers.{l}.self_attention.linear_proj.weight']
         o_weight_base_name = f'model.layers.{l}.self_attn.o_proj.weight'
         checkpoint[o_weight_base_name] = param_to_weights(o_weight)
 
         # mlp
-        mlp_weights = model.state_dict()[f'model.decoder.layers.{l}.mlp.linear_fc1.weight']
+        mlp_weights = model.model[0].state_dict()[f'decoder.layers.{l}.mlp.linear_fc1.weight']
         mlp_down_proj_weight = mlp_weights[:ffn_hidden_size, :]
         mlp_gate_proj_weight = mlp_weights[ffn_hidden_size:, :]
 
@@ -195,26 +201,26 @@ def convert(input_nemo_file, output_hf_file, precision=None, cpu_only=False) -> 
         checkpoint[mlp_down_proj_base_name] = param_to_weights(mlp_down_proj_weight)
         checkpoint[mlp_gate_proj_base_name] = param_to_weights(mlp_gate_proj_weight)
 
-        mlp_up_proj_weight = model.state_dict()[f'model.decoder.layers.{l}.mlp.linear_fc2.weight']
+        mlp_up_proj_weight = model.model[0].state_dict()[f'decoder.layers.{l}.mlp.linear_fc2.weight']
         mlp_up_proj_base_name = f'model.layers.{l}.mlp.down_proj.weight'
         checkpoint[mlp_up_proj_base_name] = param_to_weights(mlp_up_proj_weight)
 
         # layernorm
-        input_ln_weight = model.state_dict()[f'model.decoder.layers.{l}.self_attention.linear_qkv.layer_norm_weight']
+        input_ln_weight = model.model[0].state_dict()[f'decoder.layers.{l}.self_attention.linear_qkv.layer_norm_weight']
         input_ln_base_name = f'model.layers.{l}.input_layernorm.weight'
         checkpoint[input_ln_base_name] = param_to_weights(input_ln_weight)
 
-        post_attn_ln_weight = model.state_dict()[f'model.decoder.layers.{l}.mlp.linear_fc1.layer_norm_weight']
+        post_attn_ln_weight = model.model[0].state_dict()[f'decoder.layers.{l}.mlp.linear_fc1.layer_norm_weight']
         post_attn_ln_base_name = f'model.layers.{l}.post_attention_layernorm.weight'
         checkpoint[post_attn_ln_base_name] = param_to_weights(post_attn_ln_weight)
 
         print(f"done layer {l}")
 
-    final_ln_weight = model.state_dict()[f'model.decoder.final_layernorm.weight']
+    final_ln_weight = model.model[0].state_dict()[f'decoder.final_layernorm.weight']
     final_ln_base_name = f'model.norm.weight'
     checkpoint[final_ln_base_name] = param_to_weights(final_ln_weight)
 
-    output_layer_weight = model.state_dict()[f'model.output_layer.weight']
+    output_layer_weight = model.model[0].state_dict()[f'output_layer.weight']
     output_layer_base_name = f'lm_head.weight'
     checkpoint[output_layer_base_name] = param_to_weights(output_layer_weight)
 
@@ -253,7 +259,7 @@ if __name__ == '__main__':
     args = get_args()
     if not args.hf_output_tokenizer and args.hf_output_path:
         args.hf_output_tokenizer = args.hf_output_path
-    dtype = convert(args.input_name_or_path, args.output_path, precision=args.precision, cpu_only=args.cpu_only)
+    dtype = convert(args.input_name_or_path, args.output_path, args.override_config_path, precision=args.precision, cpu_only=args.cpu_only)
     if args.hf_input_path and args.hf_output_path:
         replace_hf_weights_and_tokenizer(
             args.output_path,
