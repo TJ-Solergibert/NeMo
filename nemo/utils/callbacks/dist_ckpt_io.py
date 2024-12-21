@@ -36,7 +36,7 @@ try:
         get_default_load_sharded_strategy,
         get_default_save_sharded_strategy,
     )
-    from megatron.core.dist_checkpointing.strategies import tensorstore
+    #from megatron.core.dist_checkpointing.strategies import tensorstore
     from megatron.core.dist_checkpointing.strategies.async_utils import AsyncCallsQueue, AsyncRequest
     from megatron.core.dist_checkpointing.strategies.base import SaveShardedStrategy
     from megatron.core.dist_checkpointing.strategies.fully_parallel import (
@@ -308,7 +308,8 @@ class DistributedCheckpointIO(AsyncCompatibleCheckpointIO):
             raise ValueError('DistributedCheckpointIO doesnt handle map_location argument')
 
         if self.save_ckpt_format == 'zarr' and self.load_directly_on_device:
-            sharded_strategy = tensorstore.TensorStoreLoadShardedStrategy(load_directly_on_device=True)
+            #sharded_strategy = tensorstore.TensorStoreLoadShardedStrategy(load_directly_on_device=True)
+            pass
         else:
             sharded_strategy = None
 
